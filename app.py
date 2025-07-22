@@ -1,5 +1,4 @@
-import tkinter as tk
-from tkinter import messagebox
+import streamlit as st
 import pandas as pd
 import string
 import nltk
@@ -8,13 +7,11 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 
-# Download stopwords once
+# Download stopwords (only once)
 nltk.download('stopwords')
-
-# Load stopwords once
 stop_words = set(stopwords.words('english'))
 
-# Preprocessing function to clean text
+# Preprocessing function
 def clean_text(text):
     text = text.lower()
     text = ''.join([ch for ch in text if ch not in string.punctuation])
@@ -25,18 +22,18 @@ def clean_text(text):
 # Load dataset
 df = pd.read_csv('large_phishing_dataset.csv')
 
-# Clean email text
+# Preprocess emails
 df['email_clean'] = df['email'].apply(clean_text)
 
-# TF-IDF Vectorization with n-grams and max features for generalization
+# TF-IDF Vectorization
 vectorizer = TfidfVectorizer(ngram_range=(1, 2), max_features=5000)
 X = vectorizer.fit_transform(df['email_clean'])
 y = df['label']
 
-# Split the dataset
+# Train/test split
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Train Logistic Regression model with better regularization
+# Train model
 model = LogisticRegression(C=1.0, max_iter=1000)
 model.fit(X_train, y_train)
 
@@ -45,31 +42,22 @@ def predict_email(email_text):
     cleaned = clean_text(email_text)
     vectorized = vectorizer.transform([cleaned])
     prediction = model.predict(vectorized)
-    return "Phishing Email ⚠️" if prediction[0] == 1 else "Legitimate Email ✅"
+    return "⚠️ Phishing Email" if prediction[0] == 1 else "✅ Legitimate Email"
 
-# GUI Setup using Tkinter
-def check_email():
-    email_text = entry.get("1.0", tk.END).strip()
-    if not email_text:
-        messagebox.showwarning("Input Required", "Please enter email text.")
-        return
-    result = predict_email(email_text)
-    messagebox.showinfo("Result", result)
+# ----------------------
+# Streamlit App Layout
+# ----------------------
 
-# Create the main window
-root = tk.Tk()
-root.title("Phishing Email Detection")
-root.geometry("500x300")
+st.set_page_config(page_title="Phishing Email Detector", layout="centered")
 
-# Instruction Label
-tk.Label(root, text="Enter Email Content:", font=('Arial', 12)).pack(pady=10)
+st.title("📧 Phishing Email Detection System")
+st.write("Enter an email message below to check if it's phishing or legitimate.")
 
-# Email Textbox
-entry = tk.Text(root, height=8, width=50)
-entry.pack()
+email_input = st.text_area("✉️ Email Content", height=200)
 
-# Button to trigger prediction
-tk.Button(root, text="Check Email", command=check_email, bg="blue", fg="white").pack(pady=10)
-
-# Start the GUI loop
-root.mainloop()
+if st.button("Check Email"):
+    if not email_input.strip():
+        st.warning("Please enter email content to analyze.")
+    else:
+        result = predict_email(email_input)
+        st.success(f"Result: {result}")
